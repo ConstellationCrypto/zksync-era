@@ -47,9 +47,6 @@ sha3.workspace = true
 hex.workspace = true
 indicatif.workspace = true
 
-[patch.crates-io]
-boojum = { git = "https://github.com/matter-labs/zksync-crypto", package = "boojum", branch = "si/fflonk" }
-
 [dev-dependencies]
 proptest.workspace = true
 
