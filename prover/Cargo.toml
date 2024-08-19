@@ -62,7 +62,7 @@ zkevm_test_harness = { git = "https://github.com/matter-labs/zksync-protocol", p
 fflonk = { git = "https://github.com/matter-labs/zksync-crypto", package = "fflonk", branch = "si/fflonk" }
 
 # GPU proving dependencies
-wrapper_prover = { package = "zksync-wrapper-prover", version = "=0.150.4" }
+wrapper_prover = { git = "https://github.com/matter-labs/zksync-crypto-gpu", package = "zksync-wrapper-prover", branch = "daniyar/fflonk" }
 shivini = { git = "https://github.com/matter-labs/zksync-crypto-gpu", package = "shivini", branch = "daniyar/fflonk" }
 
 # Core workspace dependencies
