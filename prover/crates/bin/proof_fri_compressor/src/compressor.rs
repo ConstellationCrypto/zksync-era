@@ -4,10 +4,8 @@ use anyhow::Context as _;
 use async_trait::async_trait;
 use circuit_sequencer_api::proof::FinalProof;
 use tokio::task::JoinHandle;
-#[cfg(feature = "gpu")]
-use wrapper_prover::{Bn256, GPUWrapperConfigs, WrapperProver, DEFAULT_WRAPPER_CONFIG};
-#[cfg(not(feature = "gpu"))]
-use zkevm_test_harness::proof_wrapper_utils::WrapperConfig;
+use zksync_prover_fri_types::circuit_definitions::circuit_definitions::aux_layer::{wrapper::ZkSyncCompressionWrapper, ZkSyncCompressionVerificationKeyForWrapper};
+use fflonk::{CompressionSchedule, FflonkSnarkVerifierCircuit, bellman::worker::Worker};
 #[allow(unused_imports)]
 use zkevm_test_harness::proof_wrapper_utils::{get_trusted_setup, wrap_proof};
 use zksync_object_store::ObjectStore;
@@ -67,30 +65,44 @@ impl ProofCompressor {
             )
             .context("get_recursiver_layer_vk_for_circuit_type()")?;
 
-        #[cfg(feature = "gpu")]
-        let wrapper_proof = {
-            let crs = get_trusted_setup();
-            let wrapper_config = DEFAULT_WRAPPER_CONFIG;
-            let mut prover = WrapperProver::<GPUWrapperConfigs>::new(&crs, wrapper_config).unwrap();
+        let serialized = {
+            // set compression schedule:
+            // - "hard" is the strategy that gives smallest final circuit
+            let compression_schedule = CompressionSchedule::hard();
+            let compression_schedule_name = compression_schedule.name();
+            let compression_wrapper_mode = compression_schedule.compression_steps.last().unwrap().clone() as u8 + 1;
+            // compress proof step by step: 1 -> 2 -> 3 -> 4 -> 5(wrapper)
+            fflonk::compress_proof(proof.into_inner(), scheduler_vk.into_inner(), compression_schedule);
+            let path = format!("./data/compression_schedule/{compression_schedule_name}");
+            // compression done, take proof and vk of last step as input of the next step
+            // - 5 (wrapper) -> fflonk proof
+            let compression_wrapper_proof_file_path = format!("{}/compression_wrapper_{}_proof.json", &path, compression_wrapper_mode);
+            let compression_wrapper_proof_file = std::fs::File::open(compression_wrapper_proof_file_path).unwrap();
+            let compression_wrapper_proof = serde_json::from_reader(&compression_wrapper_proof_file).unwrap();
 
-            prover
-                .generate_setup_data(scheduler_vk.into_inner())
-                .unwrap();
-            prover.generate_proofs(proof.into_inner()).unwrap();
+            let compression_wrapper_vk_file_path = format!("{}/compression_wrapper_{}_vk.json", &path, compression_wrapper_mode);
+            let compression_wrapper_vk_file = std::fs::File::open(compression_wrapper_vk_file_path).unwrap();
+            let compression_wrapper_vk: ZkSyncCompressionVerificationKeyForWrapper = serde_json::from_reader(&compression_wrapper_vk_file).unwrap();
 
-            prover.get_wrapper_proof().unwrap()
+            // construct fflonk snark verifier circuit
+            let wrapper_function = ZkSyncCompressionWrapper::from_numeric_circuit_type(compression_wrapper_mode);
+            let fixed_parameters = compression_wrapper_vk.fixed_parameters.clone();
+            let circuit = FflonkSnarkVerifierCircuit {
+                witness: Some(compression_wrapper_proof),
+                vk: compression_wrapper_vk,
+                fixed_parameters,
+                transcript_params: (),
+                wrapper_function,
+            };
+            // create fflonk proof in single shot - without precomputation
+            let (proof, vk) = fflonk::prove_fflonk_snark_verifier_circuit_single_shot(&circuit, &Worker::new());
+            fflonk::save_fflonk_proof_and_vk_into_file(&proof, &vk, &path);
+            let mut serialized = Vec::<u8>::new();
+            // (Re)serialization should always succeed.
+            proof.serialize_into_evm_format(&mut serialized)
+                .expect("Failed to serialize proof");
+            serialized
         };
-        #[cfg(not(feature = "gpu"))]
-        let wrapper_proof = {
-            let config = WrapperConfig::new(_compression_mode);
-
-            let (wrapper_proof, _) = wrap_proof(proof, scheduler_vk, config);
-            wrapper_proof.into_inner()
-        };
-
-        // (Re)serialization should always succeed.
-        let serialized = bincode::serialize(&wrapper_proof)
-            .expect("Failed to serialize proof with ZkSyncSnarkWrapperCircuit");
 
         // For sending to L1, we can use the `FinalProof` type, that has a generic circuit inside, that is not used for serialization.
         // So `FinalProof` and `Proof<Bn256, ZkSyncCircuit<Bn256, VmWitnessOracle<Bn256>>>` are compatible on serialization bytecode level.

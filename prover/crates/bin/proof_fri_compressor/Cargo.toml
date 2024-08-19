@@ -26,6 +26,7 @@ zksync_vlog.workspace = true
 
 circuit_sequencer_api.workspace = true
 zkevm_test_harness.workspace = true
+fflonk.workspace = true
 
 anyhow.workspace = true
 tracing.workspace = true
