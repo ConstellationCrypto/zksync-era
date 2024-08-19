@@ -8074,6 +8074,7 @@ dependencies = [
  "clap 4.5.4",
  "ctrlc",
  "fflonk",
+ "franklin-crypto",
  "futures 0.3.30",
  "reqwest 0.12.5",
  "serde",

@@ -60,6 +60,7 @@ circuit_definitions = { git = "https://github.com/matter-labs/zksync-protocol", 
 circuit_sequencer_api = { git = "https://github.com/matter-labs/zksync-protocol", package = "circuit_sequencer_api", branch = "si/fflonk" }
 zkevm_test_harness = { git = "https://github.com/matter-labs/zksync-protocol", package = "zkevm_test_harness", branch = "si/fflonk" }
 fflonk = { git = "https://github.com/matter-labs/zksync-crypto", package = "fflonk", branch = "si/fflonk" }
+franklin-crypto = { git = "https://github.com/matter-labs/zksync-crypto", package = "franklin-crypto", branch = "si/fflonk" }
 
 # GPU proving dependencies
 wrapper_prover = { git = "https://github.com/matter-labs/zksync-crypto-gpu", package = "zksync-wrapper-prover", branch = "daniyar/fflonk" }

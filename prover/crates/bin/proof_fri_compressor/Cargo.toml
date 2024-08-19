@@ -23,6 +23,7 @@ zksync_prover_fri_types.workspace = true
 zksync_queued_job_processor.workspace = true
 vk_setup_data_generator_server_fri.workspace = true
 zksync_vlog.workspace = true
+franklin-crypto.workspace = true
 
 circuit_sequencer_api.workspace = true
 zkevm_test_harness.workspace = true

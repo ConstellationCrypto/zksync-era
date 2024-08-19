@@ -4,8 +4,8 @@ use anyhow::Context as _;
 use async_trait::async_trait;
 use circuit_sequencer_api::proof::FinalProof;
 use tokio::task::JoinHandle;
-use zksync_prover_fri_types::circuit_definitions::circuit_definitions::aux_layer::{wrapper::ZkSyncCompressionWrapper, ZkSyncCompressionVerificationKeyForWrapper};
-use fflonk::{CompressionSchedule, FflonkSnarkVerifierCircuit, bellman::worker::Worker};
+use zksync_prover_fri_types::circuit_definitions::circuit_definitions::aux_layer::{wrapper::ZkSyncCompressionWrapper, ZkSyncCompressionProofForWrapper, ZkSyncCompressionVerificationKeyForWrapper};
+use fflonk::{CompressionSchedule, FflonkSnarkVerifierCircuit, bellman::worker::Worker, CompressionInput, CompressionMode};
 #[allow(unused_imports)]
 use zkevm_test_harness::proof_wrapper_utils::{get_trusted_setup, wrap_proof};
 use zksync_object_store::ObjectStore;
@@ -23,6 +23,7 @@ use zksync_prover_fri_types::{
 use zksync_prover_interface::outputs::L1BatchProofForL1;
 use zksync_queued_job_processor::JobProcessor;
 use zksync_types::{protocol_version::ProtocolSemanticVersion, L1BatchNumber};
+use zksync_prover_fri_types::circuit_definitions::circuit_definitions::recursion_layer::{ZkSyncRecursionProof, ZkSyncRecursionVerificationKey};
 use zksync_vk_setup_data_server_fri::keystore::Keystore;
 
 use crate::metrics::METRICS;
@@ -52,6 +53,43 @@ impl ProofCompressor {
         }
     }
 
+    pub fn fflonk_compress_proof(proof: ZkSyncRecursionProof, vk: ZkSyncRecursionVerificationKey, schedule: CompressionSchedule) -> (ZkSyncCompressionProofForWrapper, ZkSyncCompressionVerificationKeyForWrapper) {
+        let worker = franklin_crypto::boojum::worker::Worker::new();
+        let mut input = CompressionInput::RecursionLayer(Some(proof), vk, CompressionMode::One);
+
+        dbg!(&schedule);
+        let CompressionSchedule {
+            compression_steps,
+            ..
+        } = schedule;
+
+        let last_compression_wrapping_mode = CompressionMode::from_compression_mode(compression_steps.last().unwrap().clone() as u8 + 1);
+        dbg!(&last_compression_wrapping_mode);
+
+        let num_compression_steps = compression_steps.len();
+        let mut compression_modes_iter = compression_steps.into_iter();
+        for step_idx in 0..num_compression_steps {
+            let compression_mode = compression_modes_iter.next().unwrap();
+            let compression_circuit = input.into_compression_circuit();
+            println!("Proving compression {}", compression_mode as u8);
+            let (proof, vk) = fflonk::inner_prove_compression_layer_circuit(compression_circuit, &worker);
+            println!("Proof for compression {} is generated!", compression_mode as u8);
+
+            if step_idx + 1 == num_compression_steps {
+                input = CompressionInput::CompressionWrapperLayer(Some(proof), vk, last_compression_wrapping_mode);
+            } else {
+                input = CompressionInput::CompressionLayer(Some(proof), vk, CompressionMode::from_compression_mode(compression_mode as u8 + 1));
+            }
+        }
+
+        // last wrapping step
+        println!("Proving compression {} for wrapper", last_compression_wrapping_mode as u8);
+        let compression_circuit = input.into_compression_wrapper_circuit();
+        let (proof, vk) = fflonk::inner_prove_compression_wrapper_circuit(compression_circuit, &worker);
+        println!("Proof for compression wrapper {} is generated!", last_compression_wrapping_mode as u8);
+        (proof, vk)
+    }
+
     #[tracing::instrument(skip(proof, _compression_mode))]
     pub fn compress_proof(
         l1_batch: L1BatchNumber,
@@ -72,7 +110,7 @@ impl ProofCompressor {
             let compression_schedule_name = compression_schedule.name();
             let compression_wrapper_mode = compression_schedule.compression_steps.last().unwrap().clone() as u8 + 1;
             // compress proof step by step: 1 -> 2 -> 3 -> 4 -> 5(wrapper)
-            fflonk::compress_proof(proof.into_inner(), scheduler_vk.into_inner(), compression_schedule);
+            Self::fflonk_compress_proof(proof.into_inner(), scheduler_vk.into_inner(), compression_schedule);
             let path = format!("./data/compression_schedule/{compression_schedule_name}");
             // compression done, take proof and vk of last step as input of the next step
             // - 5 (wrapper) -> fflonk proof
