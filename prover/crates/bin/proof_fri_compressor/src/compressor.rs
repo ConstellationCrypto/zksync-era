@@ -170,12 +170,8 @@ impl ProofCompressor {
             let (proof, _) =
                 fflonk::prove_fflonk_snark_verifier_circuit_single_shot(&circuit, &Worker::new());
             println!("finished proof");
-            let mut serialized = Vec::<u8>::new();
             // (Re)serialization should always succeed.
-            proof
-                .serialize_into_evm_format(&mut serialized)
-                .expect("Failed to serialize proof");
-            serialized
+            bincode::serialize(&proof).expect("Failed to serialize proof")
         };
         println!("serialized proof as {} bytes", serialized.len());
 

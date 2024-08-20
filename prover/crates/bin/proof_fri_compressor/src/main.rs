@@ -1,7 +1,7 @@
 #![allow(incomplete_features)] // We have to use generic const exprs.
 #![feature(generic_const_exprs)]
 
-use std::{env, time::Duration};
+use std::time::Duration;
 
 use anyhow::Context as _;
 use clap::Parser;
