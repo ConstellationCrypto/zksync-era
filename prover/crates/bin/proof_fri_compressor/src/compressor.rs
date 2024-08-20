@@ -169,6 +169,7 @@ impl ProofCompressor {
             // create fflonk proof in single shot - without precomputation
             let (proof, _) =
                 fflonk::prove_fflonk_snark_verifier_circuit_single_shot(&circuit, &Worker::new());
+            println!("finished proof");
             let mut serialized = Vec::<u8>::new();
             // (Re)serialization should always succeed.
             proof
@@ -176,6 +177,7 @@ impl ProofCompressor {
                 .expect("Failed to serialize proof");
             serialized
         };
+        println!("serialized proof as {} bytes", serialized.len());
 
         // For sending to L1, we can use the `FinalProof` type, that has a generic circuit inside, that is not used for serialization.
         // So `FinalProof` and `Proof<Bn256, ZkSyncCircuit<Bn256, VmWitnessOracle<Bn256>>>` are compatible on serialization bytecode level.
