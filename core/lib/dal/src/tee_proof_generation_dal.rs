@@ -66,12 +66,12 @@ impl TeeProofGenerationDal<'_, '_> {
             min_batch_condition = min_batch_condition
         );
 
-        let query = sqlx::query!(
-            &query_str,
-            &tee_type.to_string(),
-            TeeVerifierInputProducerJobStatus::Successful as TeeVerifierInputProducerJobStatus,
-            &processing_timeout,
-        );
+        let query = sqlx::query_as(&query_str)
+            .bind(&tee_type.to_string())
+            .bind(
+                TeeVerifierInputProducerJobStatus::Successful as TeeVerifierInputProducerJobStatus,
+            )
+            .bind(&processing_timeout);
 
         let batch_number = Instrumented::new("lock_batch_for_proving")
             .with_arg("tee_type", &tee_type)
@@ -104,7 +104,7 @@ impl TeeProofGenerationDal<'_, '_> {
             tee_type.to_string()
         )
         .instrument("unlock_batch")
-        .with_arg("l1_batch_number", &l1_batch_number)
+        .with_arg("l1_batch_number", &batch_number)
         .with_arg("tee_type", &tee_type)
         .execute(self.storage)
         .await?;
