@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.3](https://github.com/matter-labs/zksync-era/compare/zk_toolbox-v0.1.2...zk_toolbox-v0.1.3) (2024-08-21)
+
+
+### Features
+
+* Add `gateway_url` to EN config ([#2698](https://github.com/matter-labs/zksync-era/issues/2698)) ([cfdda01](https://github.com/matter-labs/zksync-era/commit/cfdda019afe26810234285411eba79ada472c888))
+* add `update-token-multiplier-setter` command ([#2688](https://github.com/matter-labs/zksync-era/issues/2688)) ([0275435](https://github.com/matter-labs/zksync-era/commit/0275435c7f3f35d9ecf7b65b06d217987cd7a505))
+* add dapp-portal support to zk_inception ([#2659](https://github.com/matter-labs/zksync-era/issues/2659)) ([835d2d3](https://github.com/matter-labs/zksync-era/commit/835d2d38d533ccd4149fa481e8b66eb9d5815d8a))
+
 ## [0.1.2](https://github.com/matter-labs/zksync-era/compare/zk_toolbox-v0.1.1...zk_toolbox-v0.1.2) (2024-08-20)
 
 
