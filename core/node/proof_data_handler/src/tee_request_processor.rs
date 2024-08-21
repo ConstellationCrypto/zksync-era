@@ -41,68 +41,69 @@ impl TeeRequestProcessor {
     ) -> Result<Json<TeeProofGenerationDataResponse>, RequestProcessorError> {
         tracing::info!("Received request for proof generation data: {:?}", request);
 
-        let mut connection = self
-            .pool
-            .connection()
-            .await
-            .map_err(RequestProcessorError::Dal)?;
+        let min_batch_number: Option<L1BatchNumber> = None;
 
         loop {
-            let l1_batch_number = match connection
-                .tee_proof_generation_dal()
-                .get_next_batch_to_be_proven(
-                    request.tee_type,
-                    self.config.proof_generation_timeout(),
-                )
-                .await
-                .map_err(RequestProcessorError::Dal)?
-            {
-                Some(number) => number,
-                None => return Ok(Json(TeeProofGenerationDataResponse(None))),
-            };
+            let l1_batch_number =
+                match self.lock_batch_for_proving(request.tee_type, min_batch_number) {
+                    Some(number) => number,
+                    None => return Ok(Json(TeeProofGenerationDataResponse(None))),
+                };
 
-            match self.get_blob(l1_batch_number).await {
+            match self.blob_store.get(l1_batch_number).await? {
                 Ok(input) => {
                     return Ok(Json(TeeProofGenerationDataResponse(Some(Box::new(input)))));
                 }
                 Err(ObjectStoreError::KeyNotFound(_)) => {
                     tracing::warn!(
-                        "Blob for batch number {} has not been found in the object store. Marking the job as skipped.",
+                        "Blob for batch number {} has not been found in the object store.",
                         l1_batch_number
                     );
-                    connection
-                        .tee_proof_generation_dal()
-                        .mark_proof_generation_job_as_skipped(l1_batch_number, request.tee_type)
-                        .await
-                        .map_err(RequestProcessorError::Dal)?;
+                    self.unlock_batch(l1_batch_number, request.tee_type).await?;
+                    min_batch_number =
+                        min_batch_number.map_or(Some(l1_batch_number + 1), |num| Some(num + 1));
                     continue;
                 }
-                Err(err) => return Err(RequestProcessorError::ObjectStore(err)),
+                Err(err) => {
+                    self.unlock_batch(l1_batch_number, request.tee_type).await?;
+                    return Err(RequestProcessorError::ObjectStore(err));
+                }
             }
         }
     }
 
-    async fn get_blob(
+    async fn lock_batch_for_proving(
+        &self,
+        tee_type: TeeType,
+        min_batch_number: Option<L1BatchNumber>,
+    ) -> Result<Option<L1BatchNumber>, RequestProcessorError> {
+        self.pool
+            .connection()
+            .await
+            .map_err(RequestProcessorError::Dal)?
+            .tee_proof_generation_dal()
+            .lock_batch_for_proving(
+                request.tee_type,
+                self.config.proof_generation_timeout(),
+                min_batch_number,
+            )
+            .await
+            .map_err(RequestProcessorError::Dal)
+    }
+
+    async fn unlock_batch(
         &self,
         l1_batch_number: L1BatchNumber,
-    ) -> Result<TeeVerifierInput, ObjectStoreError> {
-        let max_blob_store_retries = 3;
-        let mut last_err: Option<ObjectStoreError> = None;
-
-        for _ in 0..max_blob_store_retries {
-            match self.blob_store.get(l1_batch_number).await {
-                Ok(input) => return Ok(input),
-                Err(err) => match err {
-                    ObjectStoreError::Other { is_retriable, .. } if is_retriable => {
-                        last_err = Some(err);
-                        continue;
-                    }
-                    _ => return Err(err),
-                },
-            }
-        }
-
-        Err(last_err.unwrap())
+        tee_type: TeeType,
+    ) -> Result<(), RequestProcessorError> {
+        self.pool
+            .connection()
+            .await
+            .map_err(RequestProcessorError::Dal)?
+            .tee_proof_generation_dal()
+            .unlock_batch(l1_batch_number, tee_type)
+            .await
+            .map_err(RequestProcessorError::Dal)
     }
 
     pub(crate) async fn submit_proof(
