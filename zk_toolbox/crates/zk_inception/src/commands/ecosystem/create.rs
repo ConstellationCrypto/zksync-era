@@ -1,10 +1,11 @@
 use std::{path::PathBuf, str::FromStr};
 
+use rand::thread_rng;
 use anyhow::{bail, Context};
 use common::{git, logger, spinner::Spinner};
 use config::{
     create_local_configs_dir, create_wallets, get_default_era_chain_id,
-    traits::SaveConfigWithBasePath, EcosystemConfig, EcosystemConfigFromFileError,
+    traits::SaveConfigWithBasePath, EcosystemConfig, WalletsConfig, EcosystemConfigFromFileError,
     ZKSYNC_ERA_GIT_REPO,
 };
 use xshell::Shell;
@@ -90,6 +91,8 @@ fn create(args: EcosystemCreateArgs, shell: &Shell) -> anyhow::Result<()> {
         shell: shell.clone().into(),
     };
 
+    let rng = &mut thread_rng();
+    let wallets = WalletsConfig::random(rng);
     // Use 0 id for ecosystem  wallets
     create_wallets(
         shell,
@@ -98,12 +101,13 @@ fn create(args: EcosystemCreateArgs, shell: &Shell) -> anyhow::Result<()> {
         0,
         args.wallet_creation,
         args.wallet_path,
+        Some(wallets.clone()),
     )?;
     ecosystem_config.save_with_base_path(shell, ".")?;
     spinner.finish();
 
     let spinner = Spinner::new(MSG_CREATING_DEFAULT_CHAIN_SPINNER);
-    create_chain_inner(chain_config, &ecosystem_config, shell)?;
+    create_chain_inner(chain_config, &ecosystem_config, shell, Some(wallets))?;
     spinner.finish();
 
     if args.start_containers {

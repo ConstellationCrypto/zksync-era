@@ -4,7 +4,7 @@ use anyhow::Context;
 use common::{logger, spinner::Spinner};
 use config::{
     create_local_configs_dir, create_wallets, traits::SaveConfigWithBasePath, ChainConfig,
-    EcosystemConfig,
+    EcosystemConfig, WalletsConfig,
 };
 use xshell::Shell;
 use zksync_basic_types::L2ChainId;
@@ -42,7 +42,7 @@ fn create(
     let spinner = Spinner::new(MSG_CREATING_CHAIN_CONFIGURATIONS_SPINNER);
     let name = args.chain_name.clone();
     let set_as_default = args.set_as_default;
-    create_chain_inner(args, ecosystem_config, shell)?;
+    create_chain_inner(args, ecosystem_config, shell, None)?;
     if set_as_default {
         ecosystem_config.default_chain = name;
         ecosystem_config.save_with_base_path(shell, ".")?;
@@ -58,6 +58,7 @@ pub(crate) fn create_chain_inner(
     args: ChainCreateArgsFinal,
     ecosystem_config: &EcosystemConfig,
     shell: &Shell,
+    wallets: Option<WalletsConfig>,
 ) -> anyhow::Result<()> {
     let default_chain_name = args.chain_name.clone();
     let chain_path = ecosystem_config.chains.join(&default_chain_name);
@@ -87,6 +88,7 @@ pub(crate) fn create_chain_inner(
         chain_id,
         args.wallet_creation,
         args.wallet_path,
+        wallets,
     )?;
 
     chain_config.save_with_base_path(shell, chain_path)?;

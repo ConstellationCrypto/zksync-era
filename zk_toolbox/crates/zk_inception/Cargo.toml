@@ -23,6 +23,7 @@ serde.workspace = true
 serde_json.workspace = true
 xshell.workspace = true
 ethers.workspace = true
+rand.workspace = true
 common.workspace = true
 tokio.workspace = true
 types.workspace = true

@@ -95,22 +95,6 @@ pub async fn genesis(
             "prover_db_config": args.prover_db,
         })),
     );
-    logger::info(MSG_STARTING_GENESIS);
-
-    let spinner = Spinner::new(MSG_INITIALIZING_DATABASES_SPINNER);
-    initialize_databases(
-        shell,
-        &args.server_db,
-        &args.prover_db,
-        config.link_to_code.clone(),
-        args.dont_drop,
-    )
-    .await?;
-    spinner.finish();
-
-    let spinner = Spinner::new(MSG_STARTING_GENESIS_SPINNER);
-    run_server_genesis(config, shell)?;
-    spinner.finish();
 
     Ok(())
 }

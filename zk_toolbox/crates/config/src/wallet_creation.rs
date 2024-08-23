@@ -18,11 +18,17 @@ pub fn create_wallets(
     id: u32,
     wallet_creation: WalletCreation,
     initial_wallet_path: Option<PathBuf>,
+    wallets: Option<WalletsConfig>,
 ) -> anyhow::Result<()> {
     let wallets = match wallet_creation {
         WalletCreation::Random => {
-            let rng = &mut thread_rng();
-            WalletsConfig::random(rng)
+            match wallets {
+                None => {
+                    let rng = &mut thread_rng();
+                    WalletsConfig::random(rng)
+                }
+                Some(i) => i
+            }
         }
         WalletCreation::Empty => WalletsConfig::empty(),
         // Use id of chain for creating
