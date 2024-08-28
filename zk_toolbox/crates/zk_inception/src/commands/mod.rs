@@ -8,3 +8,4 @@ pub mod portal;
 pub mod prover;
 pub mod server;
 pub mod update;
+pub mod database;
