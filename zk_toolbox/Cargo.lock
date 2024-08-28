@@ -6277,6 +6277,7 @@ dependencies = [
  "ethers",
  "human-panic",
  "lazy_static",
+ "rand",
  "serde",
  "serde_json",
  "serde_yaml",

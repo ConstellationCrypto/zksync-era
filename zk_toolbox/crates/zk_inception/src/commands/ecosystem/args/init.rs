@@ -12,7 +12,7 @@ use crate::{
     messages::{
         MSG_DEPLOY_ECOSYSTEM_PROMPT, MSG_DEPLOY_ERC20_PROMPT, MSG_DEPLOY_PAYMASTER_PROMPT,
         MSG_DEV_ARG_HELP, MSG_GENESIS_ARGS_HELP, MSG_L1_RPC_URL_HELP, MSG_L1_RPC_URL_INVALID_ERR,
-        MSG_L1_RPC_URL_PROMPT, MSG_OBSERVABILITY_HELP, MSG_OBSERVABILITY_PROMPT,
+        MSG_L1_RPC_URL_PROMPT, MSG_OBSERVABILITY_HELP, MSG_OBSERVABILITY_PROMPT, MSG_SKIP_CONTRACT_BUILD,
     },
 };
 
@@ -92,10 +92,12 @@ pub struct EcosystemInitArgs {
     pub dev: bool,
     #[clap(long, short = 'o', help = MSG_OBSERVABILITY_HELP, default_missing_value = "true", num_args = 0..=1)]
     pub observability: Option<bool>,
+    #[clap(long, help = MSG_SKIP_CONTRACT_BUILD, default_missing_value = "false", num_args = 0..=1)]
+    pub skip_contract_build: bool,
 }
 
 impl EcosystemInitArgs {
-    pub fn fill_values_with_prompt(self, l1_network: L1Network) -> EcosystemInitArgsFinal {
+    pub fn fill_values_with_prompt(self, l1_network: L1Network, skip_contract_build: bool) -> EcosystemInitArgsFinal {
         let (deploy_paymaster, deploy_erc20) = if self.dev {
             (true, true)
         } else {
@@ -129,6 +131,7 @@ impl EcosystemInitArgs {
             forge_args: self.forge_args.clone(),
             dev: self.dev,
             observability,
+            skip_contract_build,
         }
     }
 }
@@ -141,4 +144,5 @@ pub struct EcosystemInitArgsFinal {
     pub forge_args: ForgeScriptArgs,
     pub dev: bool,
     pub observability: bool,
+    pub skip_contract_build: bool,
 }

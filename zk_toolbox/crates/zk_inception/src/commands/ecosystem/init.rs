@@ -56,6 +56,7 @@ use crate::{
 
 pub async fn run(args: EcosystemInitArgs, shell: &Shell) -> anyhow::Result<()> {
     let ecosystem_config = EcosystemConfig::from_file(shell)?;
+    let skip_contract_build = args.skip_contract_build;
 
     git::submodule_update(shell, ecosystem_config.link_to_code.clone())?;
 
@@ -68,7 +69,7 @@ pub async fn run(args: EcosystemInitArgs, shell: &Shell) -> anyhow::Result<()> {
     if args.dev {
         genesis_args.use_default = true;
     }
-    let mut final_ecosystem_args = args.fill_values_with_prompt(ecosystem_config.l1_network);
+    let mut final_ecosystem_args = args.fill_values_with_prompt(ecosystem_config.l1_network, skip_contract_build);
 
     logger::info(MSG_INITIALIZING_ECOSYSTEM);
 
@@ -141,10 +142,16 @@ async fn init(
     ecosystem_config: &EcosystemConfig,
     initial_deployment_config: &InitialDeploymentConfig,
 ) -> anyhow::Result<ContractsConfig> {
-    let spinner = Spinner::new(MSG_INTALLING_DEPS_SPINNER);
-    install_yarn_dependencies(shell, &ecosystem_config.link_to_code)?;
-    build_system_contracts(shell, &ecosystem_config.link_to_code)?;
-    spinner.finish();
+    if init_args.skip_contract_build {
+        let spinner = Spinner::new("Skipping contract build");
+        spinner.finish();
+
+    } else {
+        let spinner = Spinner::new(MSG_INTALLING_DEPS_SPINNER);
+        install_yarn_dependencies(shell, &ecosystem_config.link_to_code)?;
+        build_system_contracts(shell, &ecosystem_config.link_to_code)?;
+        spinner.finish();
+    }
 
     let contracts = deploy_ecosystem(
         shell,
