@@ -101,8 +101,8 @@ async fn initialize_databases(
         drop_db_if_exists(server_db_config)
             .await
             .context(MSG_FAILED_TO_DROP_SERVER_DATABASE_ERR)?;
-        init_db(server_db_config).await?;
     }
+    init_db(server_db_config).await?;
     migrate_db(
         shell,
         path_to_server_migration,
@@ -117,8 +117,8 @@ async fn initialize_databases(
         drop_db_if_exists(prover_db_config)
             .await
             .context(MSG_FAILED_TO_DROP_PROVER_DATABASE_ERR)?;
-        init_db(prover_db_config).await?;
     }
+    init_db(prover_db_config).await?;
     let path_to_prover_migration = link_to_code.join(PROVER_MIGRATIONS);
     migrate_db(
         shell,
