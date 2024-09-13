@@ -27,6 +27,9 @@ pub(super) const MSG_L1_NETWORK_PROMPT: &str = "Select the L1 network";
 pub(super) const MSG_START_CONTAINERS_PROMPT: &str =
     "Do you want to start containers after creating the ecosystem?";
 pub(super) const MSG_CREATING_ECOSYSTEM: &str = "Creating ecosystem";
+pub(super) const MSG_USE_OFFICIAL_BRIDGE_HELP: &str = "Use official bridge (for sepolia or mainnet). Requires approval and chain registration on L1 by MatterLabs.";
+pub(super) const MSG_USE_OFFICIAL_BRIDGE_INVALID_L1_ERR: &str =
+    "Official bridge is only available for sepolia and mainnet";
 
 pub fn msg_created_ecosystem(name: &str) -> String {
     format!("Ecosystem {name} created successfully (All subsequent commands should be executed from ecosystem folder `cd {name}`)")
@@ -57,6 +60,7 @@ pub(super) const MSG_DEV_ARG_HELP: &str =
     "Deploy ecosystem  using all defaults. Suitable for local development";
 pub(super) const MSG_OBSERVABILITY_HELP: &str = "Enable Grafana";
 pub(super) const MSG_OBSERVABILITY_PROMPT: &str = "Do you want to setup observability? (Grafana)";
+pub(super) const MSG_SKIP_CONTRACT_BUILD: &str = "Set this flag to true if you have pre-build the contracts submodule";
 pub(super) const MSG_DEPLOY_ECOSYSTEM_PROMPT: &str =
     "Do you want to deploy ecosystem contracts? (Not needed if you already have an existing one)";
 pub(super) const MSG_L1_RPC_URL_PROMPT: &str = "What is the RPC URL of the L1 network?";

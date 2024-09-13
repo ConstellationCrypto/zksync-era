@@ -57,6 +57,18 @@ pub struct InitArgs {
     pub l1_rpc_url: Option<String>,
     #[clap(long, help = MSG_PORT_OFFSET_HELP)]
     pub port_offset: Option<PortOffset>,
+    #[arg(
+        long,
+        help = "Adhoc flag to run chain registraion from L1 side",
+        default_value_t = false
+    )]
+    pub only_l1: bool,
+    #[arg(
+        long,
+        help = "Adhoc flag to continue chain registraion from L2 side",
+        default_value_t = false
+    )]
+    pub only_l2: bool,
 }
 
 impl InitArgs {
@@ -90,6 +102,8 @@ impl InitArgs {
                 .port_offset
                 .unwrap_or(PortOffset::from_chain_id(config.id as u16))
                 .into(),
+            only_l1: self.only_l1,
+            only_l2: self.only_l2,
         }
     }
 }
@@ -101,4 +115,6 @@ pub struct InitArgsFinal {
     pub deploy_paymaster: bool,
     pub l1_rpc_url: String,
     pub port_offset: u16,
+    pub only_l1: bool,
+    pub only_l2: bool,
 }

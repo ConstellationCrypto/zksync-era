@@ -1,11 +1,12 @@
 use std::{path::PathBuf, str::FromStr};
 
+use rand::thread_rng;
 use anyhow::{bail, Context};
 use common::{git, logger, spinner::Spinner};
 use config::{
-    create_local_configs_dir, create_wallets, get_default_era_chain_id,
-    traits::SaveConfigWithBasePath, EcosystemConfig, EcosystemConfigFromFileError,
-    ZKSYNC_ERA_GIT_REPO,
+    copy_official_zksync_wallets, create_local_configs_dir, create_wallets,
+    get_default_era_chain_id, get_official_zksync_chain_id, traits::SaveConfigWithBasePath,
+    EcosystemConfig, EcosystemConfigFromFileError, WalletsConfig, ZKSYNC_ERA_GIT_REPO,
 };
 use xshell::Shell;
 
@@ -16,7 +17,7 @@ use crate::{
         ecosystem::{
             args::create::EcosystemCreateArgs,
             create_configs::{
-                create_apps_config, create_erc20_deployment_config,
+                copy_official_zksync_contracts, create_apps_config, create_erc20_deployment_config,
                 create_initial_deployments_config,
             },
         },
@@ -80,6 +81,10 @@ fn create(args: EcosystemCreateArgs, shell: &Shell) -> anyhow::Result<()> {
     create_erc20_deployment_config(shell, &configs_path)?;
     create_apps_config(shell, &configs_path)?;
 
+    let mut zksync_chain_id = get_default_era_chain_id();
+    if args.use_official_bridge {
+        zksync_chain_id = get_official_zksync_chain_id(args.l1_network)?;
+    }
     let ecosystem_config = EcosystemConfig {
         name: ecosystem_name.clone(),
         l1_network: args.l1_network,
@@ -87,27 +92,46 @@ fn create(args: EcosystemCreateArgs, shell: &Shell) -> anyhow::Result<()> {
         bellman_cuda_dir: None,
         chains: chains_path.clone(),
         config: configs_path,
-        era_chain_id: get_default_era_chain_id(),
+        era_chain_id: zksync_chain_id,
         default_chain: default_chain_name.clone(),
         prover_version: chain_config.prover_version,
         wallet_creation: args.wallet_creation,
         shell: shell.clone().into(),
     };
 
-    // Use 0 id for ecosystem  wallets
-    create_wallets(
-        shell,
-        &ecosystem_config.config,
-        &ecosystem_config.link_to_code,
-        0,
-        args.wallet_creation,
-        args.wallet_path,
-    )?;
+    let rng = &mut thread_rng();
+    let wallets = WalletsConfig::random(rng);
+
+    if args.use_official_bridge {
+        copy_official_zksync_wallets(
+            shell,
+            &ecosystem_config.config,
+            &ecosystem_config.link_to_code,
+            args.l1_network,
+        )?;
+        copy_official_zksync_contracts(
+            shell,
+            &ecosystem_config.config,
+            &ecosystem_config.link_to_code,
+            args.l1_network,
+        )?;
+    } else {
+        // Use 0 id for ecosystem wallets
+        create_wallets(
+            shell,
+            &ecosystem_config.config,
+            &ecosystem_config.link_to_code,
+            0,
+            args.wallet_creation,
+            args.wallet_path,
+            Some(wallets.clone())
+        )?;
+    }
     ecosystem_config.save_with_base_path(shell, ".")?;
     spinner.finish();
 
     let spinner = Spinner::new(MSG_CREATING_DEFAULT_CHAIN_SPINNER);
-    create_chain_inner(chain_config, &ecosystem_config, shell)?;
+    create_chain_inner(chain_config, &ecosystem_config, shell, Some(wallets.clone()))?;
     spinner.finish();
 
     if args.start_containers {

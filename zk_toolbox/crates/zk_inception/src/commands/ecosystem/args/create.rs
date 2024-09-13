@@ -17,6 +17,7 @@ use crate::{
         MSG_LINK_TO_CODE_HELP, MSG_LINK_TO_CODE_PROMPT, MSG_LINK_TO_CODE_SELECTION_CLONE,
         MSG_LINK_TO_CODE_SELECTION_PATH, MSG_NOT_MAIN_REPO_OR_FORK_ERR,
         MSG_REPOSITORY_ORIGIN_PROMPT, MSG_START_CONTAINERS_HELP, MSG_START_CONTAINERS_PROMPT,
+        MSG_USE_OFFICIAL_BRIDGE_HELP, MSG_USE_OFFICIAL_BRIDGE_INVALID_L1_ERR,
     },
 };
 
@@ -31,6 +32,8 @@ pub struct EcosystemCreateArgs {
     #[clap(flatten)]
     #[serde(flatten)]
     pub chain: ChainCreateArgs,
+    #[arg(long, help = MSG_USE_OFFICIAL_BRIDGE_HELP, default_value_t = false)]
+    pub use_official_bridge: bool,
     #[clap(
         long, help = MSG_START_CONTAINERS_HELP, default_missing_value = "true", num_args = 0..=1
     )]
@@ -68,6 +71,11 @@ impl EcosystemCreateArgs {
         let l1_network = self
             .l1_network
             .unwrap_or_else(|| PromptSelect::new(MSG_L1_NETWORK_PROMPT, L1Network::iter()).ask());
+        if self.use_official_bridge
+            && (l1_network != L1Network::Sepolia && l1_network != L1Network::Mainnet)
+        {
+            bail!(MSG_USE_OFFICIAL_BRIDGE_INVALID_L1_ERR);
+        }
         // Make the only chain as a default one
         self.chain.set_as_default = Some(true);
 
@@ -87,6 +95,7 @@ impl EcosystemCreateArgs {
             wallet_path: chain.wallet_path.clone(),
             chain_args: chain,
             start_containers,
+            use_official_bridge: self.use_official_bridge,
         })
     }
 }
@@ -100,6 +109,7 @@ pub struct EcosystemCreateArgsFinal {
     pub wallet_path: Option<PathBuf>,
     pub chain_args: ChainCreateArgsFinal,
     pub start_containers: bool,
+    pub use_official_bridge: bool,
 }
 
 impl EcosystemCreateArgsFinal {

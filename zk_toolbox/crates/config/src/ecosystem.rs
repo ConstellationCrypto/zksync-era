@@ -14,7 +14,8 @@ use crate::{
     consts::{
         CONFIGS_PATH, CONFIG_NAME, CONTRACTS_FILE, ECOSYSTEM_PATH, ERA_CHAIN_ID,
         ERC20_CONFIGS_FILE, ERC20_DEPLOYMENT_FILE, INITIAL_DEPLOYMENT_FILE, L1_CONTRACTS_FOUNDRY,
-        LOCAL_ARTIFACTS_PATH, LOCAL_DB_PATH, WALLETS_FILE,
+        LOCAL_ARTIFACTS_PATH, LOCAL_DB_PATH, WALLETS_FILE, ZKSYNC_MAINNET_CHAIN_ID,
+        ZKSYNC_SEPOLIA_CHAIN_ID,
     },
     create_localhost_wallets,
     forge_interface::deploy_ecosystem::{
@@ -276,6 +277,14 @@ pub enum EcosystemConfigFromFileError {
 
 pub fn get_default_era_chain_id() -> L2ChainId {
     L2ChainId::from(ERA_CHAIN_ID)
+}
+
+pub fn get_official_zksync_chain_id(network: L1Network) -> anyhow::Result<L2ChainId> {
+    match network {
+        L1Network::Mainnet => Ok(L2ChainId::from(ZKSYNC_MAINNET_CHAIN_ID)),
+        L1Network::Sepolia => Ok(L2ChainId::from(ZKSYNC_SEPOLIA_CHAIN_ID)),
+        _ => anyhow::bail!("Unsupported network"),
+    }
 }
 
 // Find file in all parents repository and return necessary path or an empty error if nothing has been found
