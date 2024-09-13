@@ -2,11 +2,11 @@ use std::path::{Path, PathBuf};
 
 use common::wallets::Wallet;
 use rand::thread_rng;
-use types::WalletCreation;
+use types::{L1Network, WalletCreation};
 use xshell::Shell;
 
 use crate::{
-    consts::{BASE_PATH, TEST_CONFIG_PATH},
+    consts::{BASE_PATH, CONFIGS_PATH, MAINNET_FILE, SEPOLIA_FILE, TEST_CONFIG_PATH, WALLETS_DIR},
     traits::{ReadConfig, SaveConfigWithBasePath},
     EthMnemonicConfig, WalletsConfig,
 };
@@ -70,4 +70,21 @@ pub fn create_localhost_wallets(
             5,
         )?),
     })
+}
+
+pub fn copy_official_zksync_wallets(
+    shell: &Shell,
+    base_path: &Path,
+    link_to_code: &Path,
+    network: L1Network,
+) -> anyhow::Result<()> {
+    let path = link_to_code.join(CONFIGS_PATH).join(WALLETS_DIR);
+    let wallets_path = match network {
+        L1Network::Mainnet => path.join(MAINNET_FILE),
+        L1Network::Sepolia => path.join(SEPOLIA_FILE),
+        _ => anyhow::bail!("Official bridge is only available for sepolia and mainnet"),
+    };
+    let wallets = WalletsConfig::read(shell, wallets_path)?;
+    wallets.save_with_base_path(shell, base_path)?;
+    Ok(())
 }

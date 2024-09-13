@@ -121,6 +121,8 @@ pub async fn run(args: EcosystemInitArgs, shell: &Shell) -> anyhow::Result<()> {
             deploy_paymaster: final_ecosystem_args.deploy_paymaster,
             l1_rpc_url: final_ecosystem_args.ecosystem.l1_rpc_url.clone(),
             port_offset: PortOffset::from_chain_id(chain_config.id as u16).into(),
+            only_l1: false,
+            only_l2: false,
         };
 
         chain::init::init(

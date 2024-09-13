@@ -26,6 +26,9 @@ pub const ZKSYNC_ERA_GIT_REPO: &str = "https://github.com/matter-labs/zksync-era
 pub const DOCKER_COMPOSE_FILE: &str = "docker-compose.yml";
 /// Path to the config file with mnemonic for localhost wallets
 pub(crate) const CONFIGS_PATH: &str = "etc/env/file_based";
+pub(crate) const WALLETS_DIR: &str = "wallets/";
+pub const MAINNET_FILE: &str = "mainnet.yaml";
+pub const SEPOLIA_FILE: &str = "sepolia.yaml";
 /// Path to the docker-compose file for grafana
 pub const ERA_OBSERVABILITY_COMPOSE_FILE: &str = "era-observability/docker-compose.yml";
 /// Path to era observability repository
@@ -73,12 +76,14 @@ pub const EXPLORER_WORKER_DOCKER_IMAGE: &str = "matterlabs/block-explorer-worker
 pub const EXPLORER_BATCHES_PROCESSING_POLLING_INTERVAL: u64 = 1000;
 
 /// Path to ecosystem contacts
-pub(crate) const ECOSYSTEM_PATH: &str = "etc/env/ecosystems";
+pub const ECOSYSTEM_PATH: &str = "etc/env/ecosystems";
 
 /// Path to l1 contracts foundry folder inside zksync-era
 pub(crate) const L1_CONTRACTS_FOUNDRY: &str = "contracts/l1-contracts";
 
 pub(crate) const ERA_CHAIN_ID: u32 = 270;
+pub(crate) const ZKSYNC_MAINNET_CHAIN_ID: u32 = 324;
+pub(crate) const ZKSYNC_SEPOLIA_CHAIN_ID: u32 = 300;
 
 pub(crate) const TEST_CONFIG_PATH: &str = "etc/test_config/constant/eth.json";
 pub(crate) const BASE_PATH: &str = "m/44'/60'/0'";

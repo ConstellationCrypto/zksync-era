@@ -69,7 +69,9 @@ pub async fn init(
     ecosystem_config: &EcosystemConfig,
     chain_config: &ChainConfig,
 ) -> anyhow::Result<()> {
-    copy_configs(shell, &ecosystem_config.link_to_code, &chain_config.configs)?;
+    if !init_args.only_l2 {
+        copy_configs(shell, &ecosystem_config.link_to_code, &chain_config.configs)?;
+    }
 
     let mut general_config = chain_config.get_general_config()?;
     apply_port_offset(init_args.port_offset, &mut general_config)?;
@@ -85,11 +87,6 @@ pub async fn init(
     update_from_chain_config(&mut genesis_config, chain_config);
     genesis_config.save_with_base_path(shell, &chain_config.configs)?;
 
-    // Copy ecosystem contracts
-    let mut contracts_config = ecosystem_config.get_contracts_config()?;
-    contracts_config.l1.base_token_addr = chain_config.base_token.address;
-    contracts_config.save_with_base_path(shell, &chain_config.configs)?;
-
     distribute_eth(ecosystem_config, chain_config, init_args.l1_rpc_url.clone()).await?;
     mint_base_token(ecosystem_config, chain_config, init_args.l1_rpc_url.clone()).await?;
 
@@ -98,18 +95,60 @@ pub async fn init(
     secrets.consensus = Some(get_consensus_secrets(&consensus_keys));
     secrets.save_with_base_path(shell, &chain_config.configs)?;
 
-    let spinner = Spinner::new(MSG_REGISTERING_CHAIN_SPINNER);
-    register_chain(
-        shell,
-        init_args.forge_args.clone(),
-        ecosystem_config,
-        chain_config,
-        &mut contracts_config,
-        init_args.l1_rpc_url.clone(),
-    )
-    .await?;
+    // Create or copy contracts config
+    let mut contracts_config = if !init_args.only_l2 {
+        let mut config = ecosystem_config.get_contracts_config()?;
+        config.l1.base_token_addr = chain_config.base_token.address;
+        config
+    } else {
+        chain_config.get_contracts_config()?
+    };
     contracts_config.save_with_base_path(shell, &chain_config.configs)?;
-    spinner.finish();
+
+    if !init_args.only_l2 {
+        // Register chain on L1 (signed by L1 governor)
+        let spinner = Spinner::new(MSG_REGISTERING_CHAIN_SPINNER);
+        register_chain(
+            shell,
+            init_args.forge_args.clone(),
+            ecosystem_config,
+            chain_config,
+            &mut contracts_config,
+            init_args.l1_rpc_url.clone(),
+        )
+        .await?;
+        contracts_config.save_with_base_path(shell, &chain_config.configs)?;
+        spinner.finish();
+
+        // Deploy L2 contracts (signed by L1 governor)
+        deploy_l2_contracts::deploy_l2_contracts(
+            shell,
+            chain_config,
+            ecosystem_config,
+            &mut contracts_config,
+            init_args.forge_args.clone(),
+        )
+        .await?;
+        contracts_config.save_with_base_path(shell, &chain_config.configs)?;
+
+        // Setup legacy bridge (signed by L1 governor)
+        if let Some(true) = chain_config.legacy_bridge {
+            setup_legacy_bridge(
+                shell,
+                chain_config,
+                ecosystem_config,
+                &contracts_config,
+                init_args.forge_args.clone(),
+            )
+            .await?;
+        }
+
+        if init_args.only_l1 {
+            return Ok(());
+        }
+    }
+
+    // Accept admin ownership of the chain (signed by L2 governor)
     let spinner = Spinner::new(MSG_ACCEPTING_ADMIN_SPINNER);
     accept_admin(
         shell,
@@ -123,6 +162,7 @@ pub async fn init(
     .await?;
     spinner.finish();
 
+    // Set token multiplier setter (signed by L2 governor)
     if chain_config.base_token != BaseToken::eth() {
         let spinner = Spinner::new(MSG_UPDATING_TOKEN_MULTIPLIER_SETTER_SPINNER);
         set_token_multiplier_setter(
@@ -141,27 +181,6 @@ pub async fn init(
         )
         .await?;
         spinner.finish();
-    }
-
-    deploy_l2_contracts::deploy_l2_contracts(
-        shell,
-        chain_config,
-        ecosystem_config,
-        &mut contracts_config,
-        init_args.forge_args.clone(),
-    )
-    .await?;
-    contracts_config.save_with_base_path(shell, &chain_config.configs)?;
-
-    if let Some(true) = chain_config.legacy_bridge {
-        setup_legacy_bridge(
-            shell,
-            chain_config,
-            ecosystem_config,
-            &contracts_config,
-            init_args.forge_args.clone(),
-        )
-        .await?;
     }
 
     if init_args.deploy_paymaster {
