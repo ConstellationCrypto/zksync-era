@@ -6411,7 +6411,7 @@ dependencies = [
  "ethers",
  "human-panic",
  "lazy_static",
- "rand",
+ "rand 0.8.5",
  "secrecy",
  "serde",
  "serde_json",

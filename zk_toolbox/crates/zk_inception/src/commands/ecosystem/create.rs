@@ -6,7 +6,7 @@ use common::{git, logger, spinner::Spinner};
 use config::{
     copy_official_zksync_wallets, create_local_configs_dir, create_wallets,
     get_default_era_chain_id, get_official_zksync_chain_id, traits::SaveConfigWithBasePath,
-    EcosystemConfig, EcosystemConfigFromFileError, ZKSYNC_ERA_GIT_REPO,
+    EcosystemConfig, EcosystemConfigFromFileError, WalletsConfig, ZKSYNC_ERA_GIT_REPO,
 };
 use xshell::Shell;
 
@@ -99,6 +99,9 @@ fn create(args: EcosystemCreateArgs, shell: &Shell) -> anyhow::Result<()> {
         shell: shell.clone().into(),
     };
 
+    let rng = &mut thread_rng();
+    let wallets = WalletsConfig::random(rng);
+
     if args.use_official_bridge {
         copy_official_zksync_wallets(
             shell,
@@ -121,13 +124,14 @@ fn create(args: EcosystemCreateArgs, shell: &Shell) -> anyhow::Result<()> {
             0,
             args.wallet_creation,
             args.wallet_path,
+            Some(wallets.clone())
         )?;
     }
     ecosystem_config.save_with_base_path(shell, ".")?;
     spinner.finish();
 
     let spinner = Spinner::new(MSG_CREATING_DEFAULT_CHAIN_SPINNER);
-    create_chain_inner(chain_config, &ecosystem_config, shell, Some(wallets))?;
+    create_chain_inner(chain_config, &ecosystem_config, shell, Some(wallets.clone()))?;
     spinner.finish();
 
     if args.start_containers {
