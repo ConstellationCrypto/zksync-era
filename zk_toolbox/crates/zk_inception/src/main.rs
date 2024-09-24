@@ -14,8 +14,13 @@ use config::EcosystemConfig;
 use xshell::Shell;
 
 use crate::commands::{
-    args::RunServerArgs, chain::ChainCommands, ecosystem::EcosystemCommands,
-    explorer::ExplorerCommands, external_node::ExternalNodeCommands, prover::ProverCommands,
+    args::RunServerArgs,
+    chain::ChainCommands,
+    ecosystem::EcosystemCommands,
+    explorer::ExplorerCommands,
+    external_node::ExternalNodeCommands,
+    prover::ProverCommands,
+    database::DatabaseArgs,
 };
 
 pub mod accept_ownership;
@@ -68,6 +73,9 @@ pub enum InceptionSubcommands {
     /// Update ZKsync
     #[command(alias = "u")]
     Update(UpdateArgs),
+    /// Standalone database initializer
+    #[command(alias = "db")]
+    Database(DatabaseArgs),
     #[command(hide = true)]
     Markdown,
 }
@@ -133,6 +141,7 @@ async fn run_subcommand(inception_args: Inception, shell: &Shell) -> anyhow::Res
         InceptionSubcommands::Explorer(args) => commands::explorer::run(shell, args).await?,
         InceptionSubcommands::Portal => commands::portal::run(shell).await?,
         InceptionSubcommands::Update(args) => commands::update::run(shell, args)?,
+        InceptionSubcommands::Database(args) => commands::database::run(shell, args).await?,
         InceptionSubcommands::Markdown => {
             clap_markdown::print_help_markdown::<Inception>();
         }
